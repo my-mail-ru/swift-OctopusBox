@@ -1,8 +1,8 @@
 import BinaryEncoding
 
-enum PropertyInfo {
-	case field(Field.Type)
-	case storageInfo
+struct PropertyInfo {
+	let type: Field.Type
+	let offset: Int
 }
 
 var propertiesOfTuple: [ObjectIdentifier : [PropertyInfo]] = [:]
@@ -16,34 +16,22 @@ extension TupleProtocol {
 	public init(fromUnsafe tuple: UnsafeTuple) throws {
 		self.init()
 		var reader = tuple.reader()
-		var ptr = propertiesUnsafeMutableRawPointer
+		let start = propertiesUnsafeMutableRawPointer
 		for info in Self.propertiesInfo {
-			switch info {
-				case .field(let type):
-					guard let field = try reader.read(type) else { break }
-					field.write(to: &ptr)
-				case .storageInfo:
-					skipStorageInfo(in: &ptr)
-			}
+			guard let field = try reader.read(info.type) else { break }
+			field.write(to: start, at: info.offset)
 		}
 	}
 
 	public mutating func field<T : Field>(_ field: UnsafePointer<T>) -> FieldNumber<T, Self> {
-		var ptr = UnsafeRawPointer(propertiesUnsafeMutableRawPointer)
+		let start = UnsafeRawPointer(propertiesUnsafeMutableRawPointer)
 		let field = UnsafeRawPointer(field)
 		var i = 0
 		for info in Self.propertiesInfo {
-			switch info {
-				case .field(let type):
-					type.align(in: &ptr)
-					if ptr == field {
-						return FieldNumber(i)
-					}
-					type.skip(in: &ptr)
-					i += 1
-				case .storageInfo:
-					skipStorageInfo(in: &ptr)
+			if (start + info.offset) == field {
+				return FieldNumber(i)
 			}
+			i += 1
 		}
 		preconditionFailure()
 	}
@@ -54,14 +42,18 @@ extension TupleProtocol {
 			return fields
 		} else {
 			var list: [PropertyInfo] = []
+			var offset = 0
 			let mirror = Mirror(reflecting: self.init())
 			for (label, value) in mirror.children {
 				switch value {
 					case let val as Field:
-						list.append(.field(type(of: val)))
+						let t = type(of: val)
+						t.align(offset: &offset)
+						list.append(PropertyInfo(type: t, offset: offset))
+						t.skip(offset: &offset)
 					default:
 						if label == "storageInfo" {
-							list.append(.storageInfo)
+							skipStorageInfo(offset: &offset)
 						} else {
 							preconditionFailure("\(type(of: value)) is not Field")
 						}
@@ -84,49 +76,28 @@ extension TupleProtocol {
 }
 
 private extension Field {
-	func write(to ptr: inout UnsafeMutableRawPointer) {
-		Self.align(in: &ptr)
-		ptr.assumingMemoryBound(to: Self.self).pointee = self
-		Self.skip(in: &ptr)
-	}
-
-	static func align(in ptr: inout UnsafeMutableRawPointer) {
-		let d = UInt(bitPattern: ptr) % UInt(MemoryLayout<Self>.alignment)
+	static func align(offset: inout Int) {
+		let d = offset % MemoryLayout<Self>.alignment
 		if d != 0 {
-			ptr += MemoryLayout<Self>.alignment - Int(d)
+			offset += MemoryLayout<Self>.alignment - d
 		}
 	}
 
-	static func skip(in ptr: inout UnsafeMutableRawPointer) {
-		ptr += MemoryLayout<Self>.size
+	static func skip(offset: inout Int) {
+		offset += MemoryLayout<Self>.size
 	}
 
-	static func align(in ptr: inout UnsafeRawPointer) {
-		let d = UInt(bitPattern: ptr) % UInt(MemoryLayout<Self>.alignment)
-		if d != 0 {
-			ptr += MemoryLayout<Self>.alignment - Int(d)
-		}
-	}
-
-	static func skip(in ptr: inout UnsafeRawPointer) {
-		ptr += MemoryLayout<Self>.size
+	func write(to start: UnsafeMutableRawPointer, at offset: Int) {
+		(start + offset).assumingMemoryBound(to: Self.self).pointee = self
 	}
 }
 
-private func skipStorageInfo(in ptr: inout UnsafeMutableRawPointer) {
-	let d = UInt(bitPattern: ptr) % UInt(MemoryLayout<StorageInfo?>.alignment)
+private func skipStorageInfo(offset: inout Int) {
+	let d = offset % MemoryLayout<StorageInfo?>.alignment
 	if d != 0 {
-		ptr += MemoryLayout<StorageInfo?>.alignment - Int(d)
+		offset += MemoryLayout<StorageInfo?>.alignment - d
 	}
-	ptr += MemoryLayout<StorageInfo?>.size
-}
-
-private func skipStorageInfo(in ptr: inout UnsafeRawPointer) {
-	let d = UInt(bitPattern: ptr) % UInt(MemoryLayout<StorageInfo?>.alignment)
-	if d != 0 {
-		ptr += MemoryLayout<StorageInfo?>.alignment - Int(d)
-	}
-	ptr += MemoryLayout<StorageInfo?>.size
+	offset += MemoryLayout<StorageInfo?>.size
 }
 
 extension BinaryEncodedData {

@@ -26,7 +26,9 @@ public extension RecordProtocol where Tuple == Self {
 
 public extension RecordProtocol {
 	static func selectRequest<Key>(shard: Int = 0, index: Index<Tuple, Key>, keys: [Key], offset: UInt32 = 0, limit: UInt32 = UInt32.max) throws -> Message {
-		var data = BinaryEncodedData()
+		let headerSize = 5 * MemoryLayout<UInt32>.size
+		let approximateKeysSize = keys.count * (MemoryLayout<UInt32>.size + 1 + MemoryLayout<Key>.size)
+		var data = BinaryEncodedData(minimumCapacity: headerSize + approximateKeysSize)
 		data.append(UInt32(namespace), as: UInt32.self)
 		data.append(index.number, as: UInt32.self)
 		data.append(offset, as: UInt32.self)
@@ -64,13 +66,10 @@ public extension RecordProtocol {
 	static func selectRequests<Key>(index: Index<Tuple, Key>, keys: [(shard: Int, key: Key)]) throws -> [Message] {
 		var byShard = [Int : [Key]]()
 		for k in keys {
-			if var arr = byShard[k.shard] {
-				arr.append(k.key)
-			} else {
-				byShard[k.shard] = [k.key]
-			}
+			byShard[k.shard]?.append(k.key) ?? (byShard[k.shard] = [k.key])
 		}
 		var messages = [Message]()
+		messages.reserveCapacity(byShard.count)
 		for (shard, keys) in byShard {
 			messages.append(try selectRequest(shard: shard, index: index, keys: keys))
 		}
@@ -95,7 +94,7 @@ public extension RecordProtocol {
 		if wantResult {
 			flags |= Flags.wantResult
 		}
-		var data = BinaryEncodedData()
+		var data = BinaryEncodedData(minimumCapacity: 2 * MemoryLayout<UInt32>.size)
 		data.append(UInt32(Self.namespace), as: UInt32.self)
 		data.append(flags, as: UInt32.self)
 		data.append(tuple: tuple)
@@ -127,7 +126,7 @@ public extension RecordProtocol {
 		if wantResult {
 			flags |= Flags.wantResult
 		}
-		var data = BinaryEncodedData()
+		var data = BinaryEncodedData(minimumCapacity: 2 * MemoryLayout<UInt32>.size)
 		data.append(UInt32(Self.namespace), as: UInt32.self)
 		data.append(flags, as: UInt32.self)
 		data.append(key: key)
@@ -164,7 +163,8 @@ public extension RecordProtocol {
 					let storageInfo = StorageInfo(from: response.from, shard: message.options.shard)
 					var result = [Self]()
 					if wantResult {
-						let count = try reader.read(UInt32.self)
+						let count = Int(try reader.read(UInt32.self))
+						result.reserveCapacity(count)
 						for _ in (0..<count) {
 							let tuple = try reader.read(UnsafeTuple.self)
 							result.append(try Self(tuple: Tuple(fromUnsafe: tuple), storageInfo: storageInfo))
@@ -187,7 +187,7 @@ public extension RecordProtocol {
 
 	static func processResponses<Key>(of messages: [Message], groupBy: UniqIndex<Tuple, Key>, wantResult: Bool = true) throws -> [Key : Self] {
 		let records = try processResponses(of: messages, wantResult: wantResult)
-		var result: [Key: Self] = [:]
+		var result = [Key: Self](minimumCapacity: records.count)
 		for record in records {
 			result[groupBy.extractKey(record.tuple)] = record
 		}

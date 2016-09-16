@@ -7,7 +7,7 @@ public extension RecordProtocol {
 		if wantResult {
 			flags |= Flags.wantResult
 		}
-		var data = BinaryEncodedData()
+		var data = BinaryEncodedData(minimumCapacity: 3 * MemoryLayout<UInt32>.size)
 		data.append(UInt32(Self.namespace), as: UInt32.self)
 		data.append(flags, as: UInt32.self)
 		data.append(key: Self.primaryKey, from: tuple)

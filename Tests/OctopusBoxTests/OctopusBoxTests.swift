@@ -25,7 +25,6 @@ class OctopusBoxTests : XCTestCase {
 		XCTAssertEqual(check?.checkUp, 10)
 
 		try data.delete()
-		print("data: \(data)")
 
 		let notExists = try Inplace.select(id: 1999999996)
 		XCTAssertNil(notExists)
@@ -45,7 +44,6 @@ class OctopusBoxTests : XCTestCase {
 		XCTAssertEqual(check?.tuple.checkUp, 10)
 
 		try data.delete()
-		print("data: \(data)")
 
 		let notExists = try Include.select(id: 1999999996)
 		XCTAssertNil(notExists)
@@ -65,7 +63,6 @@ class OctopusBoxTests : XCTestCase {
 		XCTAssertEqual(check?.tuple.checkUp, 10)
 
 		try data.delete()
-		print("data: \(data)")
 
 		let notExists = try IncludeShards.select(shard: 3, id: 1999999996)
 		XCTAssertNil(notExists)
