@@ -154,6 +154,9 @@ public extension RecordProtocol {
 		switch message.response {
 			case .ok(let response):
 				return try response.withUnsafeBufferRawPointer {
+					guard $0.count > 0 else {
+						throw OctopusBoxError.errcodeOmitted
+					}
 					var reader = $0.reader()
 					let errcode = try reader.read(UInt32.self)
 					guard errcode == 0 else {

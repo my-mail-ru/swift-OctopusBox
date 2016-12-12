@@ -26,6 +26,7 @@ public struct StorageInfo {
 }
 
 public enum OctopusBoxError : Error {
+	case errcodeOmitted
 	case invalidFieldSize
 	case notSingleTuple(Int)
 }
