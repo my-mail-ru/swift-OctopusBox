@@ -65,19 +65,21 @@ public extension FieldNumber where Value : Integer {
 	func or(_ value: Value) -> UpdateOperation<Tuple> {
 		return UpdateOperation(field: number, op: .or(value))
 	}
-
-	func setBit(_ value: Value) -> UpdateOperation<Tuple> {
-		return UpdateOperation(field: number, op: .or(value))
-	}
-
-	func clearBit(_ value: Value) -> UpdateOperation<Tuple> {
-		return UpdateOperation(field: number, op: .and(~value))
-	}
 }
 
 public extension FieldNumber where Value : SignedInteger {
 	func sub(_ value: Value) -> UpdateOperation<Tuple> {
 		return UpdateOperation(field: number, op: .add(-value))
+	}
+}
+
+public extension FieldNumber where Value : OptionSet, Value.RawValue : Field & Integer {
+	func setBit(_ value: Value) -> UpdateOperation<Tuple> {
+		return UpdateOperation(field: number, op: .or(value.rawValue))
+	}
+
+	func clearBit(_ value: Value) -> UpdateOperation<Tuple> {
+		return UpdateOperation(field: number, op: .and(~value.rawValue))
 	}
 }
 
