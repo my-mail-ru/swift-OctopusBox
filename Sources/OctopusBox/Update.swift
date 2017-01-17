@@ -22,8 +22,9 @@ public extension RecordProtocol {
 		return message
 	}
 
-	mutating func update(_ ops: [UpdateOperation<Tuple>]) throws {
+	mutating func update(_ ops: [UpdateOperation<Tuple>], options: OverridenOptions? = nil) throws {
 		let message = updateRequest(ops)
+		options?.apply(to: message.options)
 		exchange(message: message)
 		_ = try Self.processResponse(of: message, wantResult: false)
 	}

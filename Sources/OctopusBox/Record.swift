@@ -42,14 +42,15 @@ public extension RecordProtocol {
 		return message
 	}
 
-	static func select<Key>(shard: Int = 0, index: Index<Tuple, Key>, keys: [Key], offset: UInt32 = 0, limit: UInt32 = UInt32.max) throws -> [Self] {
+	static func select<Key>(shard: Int = 0, index: Index<Tuple, Key>, keys: [Key], offset: UInt32 = 0, limit: UInt32 = UInt32.max, options: OverridenOptions? = nil) throws -> [Self] {
 		let message = try selectRequest(shard: shard, index: index, keys: keys, offset: offset, limit: limit)
+		options?.apply(to: message.options)
 		exchange(message: message)
 		return try processResponse(of: message)
 	}
 
-	static func select<Key>(shard: Int = 0, index: UniqIndex<Tuple, Key>, key: Key, offset: UInt32 = 0, limit: UInt32 = UInt32.max) throws -> Self? {
-		let result = try select(shard: shard, index: index, keys: [key], offset: offset, limit: limit)
+	static func select<Key>(shard: Int = 0, index: UniqIndex<Tuple, Key>, key: Key, offset: UInt32 = 0, limit: UInt32 = UInt32.max, options: OverridenOptions? = nil) throws -> Self? {
+		let result = try select(shard: shard, index: index, keys: [key], offset: offset, limit: limit, options: options)
 		guard result.count == 1 else {
 			if result.count == 0 {
 				return nil
@@ -59,8 +60,8 @@ public extension RecordProtocol {
 		return result[0]
 	}
 
-	static func select<Key>(shard: Int = 0, index: NonUniqIndex<Tuple, Key>, key: Key, offset: UInt32 = 0, limit: UInt32 = UInt32.max) throws -> [Self] {
-		return try select(shard: shard, index: index, keys: [key], offset: offset, limit: limit)
+	static func select<Key>(shard: Int = 0, index: NonUniqIndex<Tuple, Key>, key: Key, offset: UInt32 = 0, limit: UInt32 = UInt32.max, options: OverridenOptions? = nil) throws -> [Self] {
+		return try select(shard: shard, index: index, keys: [key], offset: offset, limit: limit, options: options)
 	}
 
 	static func selectRequests<Key>(index: Index<Tuple, Key>, keys: [(shard: Int, key: Key)]) throws -> [Message] {
@@ -76,8 +77,13 @@ public extension RecordProtocol {
 		return messages
 	}
 
-	static func select<Key>(index: Index<Tuple, Key>, keys: [(shard: Int, key: Key)]) throws -> [Self] {
+	static func select<Key>(index: Index<Tuple, Key>, keys: [(shard: Int, key: Key)], options: OverridenOptions? = nil) throws -> [Self] {
 		let messages = try selectRequests(index: index, keys: keys)
+		if let options = options {
+			for message in messages {
+				options.apply(to: message.options)
+			}
+		}
 		exchange(messages: messages)
 		var result = [Self]()
 		for message in messages {
@@ -109,8 +115,9 @@ public extension RecordProtocol {
 		return message
 	}
 
-	mutating func insert(shard: Int = 0, action: InsertAction = .set) throws {
+	mutating func insert(shard: Int = 0, action: InsertAction = .set, options: OverridenOptions? = nil) throws {
 		let message = insertRequest(shard: shard, action: action, wantResult: true)
+		options?.apply(to: message.options)
 		exchange(message: message)
 		let result = try Self.processResponse(of: message, wantResult: true)
 		guard result.count == 1 else {
@@ -141,8 +148,9 @@ public extension RecordProtocol {
 		return Self.deleteRequest(shard: storageInfo?.shard ?? 0, key: Self.primaryKey.extractKey(tuple), wantResult: wantResult)
 	}
 
-	mutating func delete() throws {
+	mutating func delete(options: OverridenOptions? = nil) throws {
 		let message = deleteRequest()
+		options?.apply(to: message.options)
 		exchange(message: message)
 		_ = try Self.processResponse(of: message, wantResult: false)
 		storageInfo = nil
