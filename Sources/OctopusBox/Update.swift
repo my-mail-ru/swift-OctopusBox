@@ -30,6 +30,24 @@ public extension RecordProtocol {
 	}
 }
 
+public protocol QueueableUpdateRecord : RecordProtocol {
+	var updateQueue: [UpdateOperation<Tuple>] { get set }
+}
+
+public extension QueueableUpdateRecord {
+	mutating func updateRequest(wantResult: Bool = false) -> Message {
+		defer { updateQueue = [] }
+		return updateRequest(updateQueue, wantResult: wantResult)
+	}
+
+	mutating func update(options: OverridenOptions? = nil) throws {
+		let message = updateRequest()
+		options?.apply(to: message.options)
+		exchange(message: message)
+		_ = try Self.processResponse(of: message, wantResult: false)
+	}
+}
+
 public struct FieldNumber<Value : Field, Tuple : TupleProtocol> {
 	let number: Int
 

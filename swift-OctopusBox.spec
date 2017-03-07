@@ -11,8 +11,9 @@ BuildRoot:     %(mktemp -ud %{_tmppath}/%{name}-%{version}-%{release}-XXXXXX)
 
 BuildRequires: swift
 BuildRequires: swift-packaging
-BuildRequires: swift-IProto
-BuildRequires: swift-Octopus
+BuildRequires: swiftpm(https://github.com/my-mail-ru/swift-BinaryEncoding.git)
+BuildRequires: swiftpm(https://github.com/my-mail-ru/swift-IProto.git)
+BuildRequires: swiftpm(https://github.com/my-mail-ru/swift-Octopus.git)
 
 %swift_find_provides_and_requires
 

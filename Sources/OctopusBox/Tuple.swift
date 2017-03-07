@@ -15,6 +15,7 @@ public protocol TupleProtocol {
 extension TupleProtocol {
 	public init(fromUnsafe tuple: UnsafeTuple) throws {
 		self.init()
+		defer { _fixLifetime(self) }
 		var reader = tuple.reader()
 		let start = propertiesUnsafeMutableRawPointer
 		for info in Self.propertiesInfo {
@@ -24,7 +25,8 @@ extension TupleProtocol {
 	}
 
 	public mutating func field<T : Field>(_ field: UnsafePointer<T>) -> FieldNumber<T, Self> {
-		let start = UnsafeRawPointer(propertiesUnsafeMutableRawPointer)
+		defer { _fixLifetime(self) }
+		let start = propertiesUnsafeRawPointer
 		let field = UnsafeRawPointer(field)
 		var i = 0
 		for info in Self.propertiesInfo {
@@ -36,7 +38,7 @@ extension TupleProtocol {
 		preconditionFailure()
 	}
 
-	private static var propertiesInfo: [PropertyInfo] {
+	fileprivate static var propertiesInfo: [PropertyInfo] {
 		let selfId = ObjectIdentifier(self)
 		if let fields = propertiesOfTuple[selfId] {
 			return fields
@@ -52,10 +54,13 @@ extension TupleProtocol {
 						list.append(PropertyInfo(type: t, offset: offset))
 						t.skip(offset: &offset)
 					default:
-						if label == "storageInfo" {
-							skipStorageInfo(offset: &offset)
-						} else {
-							preconditionFailure("\(type(of: value)) is not Field")
+						switch label {
+							case .some("storageInfo") where type(of: value) == Optional<StorageInfo>.self:
+								skip(Optional<StorageInfo>.self, offset: &offset)
+							case .some("updateQueue") where type(of: value) == Array<UpdateOperation<Self>>.self:
+								skip(Array<UpdateOperation<Self>>.self, offset: &offset)
+							default:
+								preconditionFailure("\(type(of: value)) is not Field")
 						}
 				}
 			}
@@ -71,6 +76,12 @@ extension TupleProtocol {
 			} else {
 				return UnsafeMutableRawPointer(&self)
 			}
+		}
+	}
+	
+	fileprivate var propertiesUnsafeRawPointer: UnsafeRawPointer {
+		mutating get {
+			return UnsafeRawPointer(propertiesUnsafeMutableRawPointer)
 		}
 	}
 }
@@ -90,31 +101,32 @@ private extension Field {
 	func write(to start: UnsafeMutableRawPointer, at offset: Int) {
 		(start + offset).assumingMemoryBound(to: Self.self).pointee = self
 	}
+
+	static func read(from start: UnsafeRawPointer, at offset: Int) -> Self {
+		return (start + offset).assumingMemoryBound(to: Self.self).pointee
+	}
 }
 
-private func skipStorageInfo(offset: inout Int) {
-	let d = offset % MemoryLayout<StorageInfo?>.alignment
+private func skip<T>(_: T.Type, offset: inout Int) {
+	let d = offset % MemoryLayout<T>.alignment
 	if d != 0 {
-		offset += MemoryLayout<StorageInfo?>.alignment - d
+		offset += MemoryLayout<T>.alignment - d
 	}
-	offset += MemoryLayout<StorageInfo?>.size
+	offset += MemoryLayout<T>.size
 }
 
 extension BinaryEncodedData {
 	mutating func append(tuple value: TupleProtocol) {
-		let mirror = Mirror(reflecting: value)
-		var cardinalityAt = count
-		var cardinality: UInt32 = 0
-		append(cardinality, as: UInt32.self)
-		for (label, value) in mirror.children {
-			guard let val = value as? Field else {
-				if label == "storageInfo" { continue }
-				preconditionFailure("\(type(of: value)) is not Field")
+		var value = value
+		let propertiesInfo = type(of: value).propertiesInfo
+		append(UInt32(propertiesInfo.count), as: UInt32.self)
+		withExtendedLifetime(value) {
+			let properties = value.propertiesUnsafeRawPointer
+			for info in propertiesInfo {
+				let field = info.type.read(from: properties, at: info.offset)
+				append(field: field)
 			}
-			append(field: val)
-			cardinality += 1
 		}
-		write(cardinality, as: UInt32.self, at: &cardinalityAt)
 	}
 }
 

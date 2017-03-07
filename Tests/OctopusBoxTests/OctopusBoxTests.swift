@@ -1,6 +1,7 @@
 import XCTest
 import IProto
 import OctopusBox
+import func Glibc.getenv
 
 class OctopusBoxTests : XCTestCase {
 	static var allTests: [(String, (OctopusBoxTests) -> () throws -> Void)] {
@@ -8,6 +9,7 @@ class OctopusBoxTests : XCTestCase {
 			("testInplace", testInplace),
 			("testInclude", testInclude),
 			("testIncludeShards", testIncludeShards),
+			("testQueuedUpdate", testQueuedUpdate),
 		]
 	}
 
@@ -67,10 +69,39 @@ class OctopusBoxTests : XCTestCase {
 		let notExists = try IncludeShards.select(shard: 3, id: 1999999996)
 		XCTAssertNil(notExists)
 	}
+
+	func testQueuedUpdate() throws {
+		var data = InplaceQU(id: 1999999996, name: "Василий")
+		try data.insert()
+		XCTAssertEqual(data.storageInfo?.from, .master)
+
+		let exists = try InplaceQU.select(id: 1999999996)
+		XCTAssertEqual(exists?.name, "Василий")
+
+		data.updateQueue = [data.field(&data.checkUp).set(10)]
+		try data.update()
+
+		let check = try Inplace.select(id: 1999999996)
+		XCTAssertEqual(check?.checkUp, 10)
+
+		try data.delete()
+
+		let notExists = try Inplace.select(id: 1999999996)
+		XCTAssertNil(notExists)
+	}
 }
 
+var testServer: Server = {
+	if let env = getenv("TEST_SERVER") {
+		let parts = String(cString: env).characters.split(separator: ":").map(String.init)
+		return Server(host: parts[0], port: Int(parts[1])!)
+	} else {
+		return Server(host: "127.0.0.1", port: 33700)
+	}
+}()
+
 final class Inplace : RecordProtocol, TupleProtocol {
-	static let cluster = Cluster(shards: [Shard(masters: [Server(host: "127.0.0.1", port: 33700)])])
+	static let cluster = Cluster(shards: [Shard(masters: [testServer])])
 	static let namespace = 22
 
 	typealias PrimaryKey = Int32
@@ -103,7 +134,7 @@ final class Inplace : RecordProtocol, TupleProtocol {
 }
 
 final class Include : RecordProtocol {
-	static let cluster = Cluster(shards: [Shard(masters: [Server(host: "127.0.0.1", port: 33700)])])
+	static let cluster = Cluster(shards: [Shard(masters: [testServer])])
 	static let namespace = 22
 
 	typealias PrimaryKey = Int32
@@ -144,7 +175,7 @@ final class Include : RecordProtocol {
 
 final class IncludeShards : RecordProtocol, Sharded {
 	static let shardCount = 8
-	static let cluster = Cluster(shards: (1...shardCount).map { _ in Shard(masters: [Server(host: "127.0.0.1", port: 33700)]) })
+	static let cluster = Cluster(shards: (1...shardCount).map { _ in Shard(masters: [testServer]) })
 	static let namespace = 22
 
 	typealias PrimaryKey = Int32
@@ -180,5 +211,39 @@ final class IncludeShards : RecordProtocol, Sharded {
 
 	static func select(shard: Int, duple: (one: UInt32, two: UInt32)) throws -> [IncludeShards] {
 		return try select(shard: shard, index: dupleKey, key: (duple.one, duple.two))
+	}
+}
+
+final class InplaceQU : QueueableUpdateRecord, TupleProtocol {
+	static let cluster = Cluster(shards: [Shard(masters: [testServer])])
+	static let namespace = 22
+
+	typealias PrimaryKey = Int32
+	static let primaryKey = InplaceQU.uniqIndex(0) { $0.id }
+	static let dupleKey = InplaceQU.index(1) { (one: $0.one, two: $0.two) }
+
+	var id: Int32 = 0
+	var one: UInt32 = 0
+	var two: UInt32 = 0
+	var checkUp: Int32 = 0
+	var int2: Int32 = 0
+	var name: String = ""
+
+	var storageInfo: StorageInfo?
+	var updateQueue = [UpdateOperation<InplaceQU>]()
+
+	init() {}
+
+	init(id: Int32, name: String) {
+		self.id = id
+		self.name = name
+	}
+
+	static func select(id: Int32) throws -> InplaceQU? {
+		return try select(index: primaryKey, key: id)
+	}
+
+	static func select(duple: (one: UInt32, two: UInt32)) throws -> [InplaceQU] {
+		return try select(index: dupleKey, key: (duple.one, duple.two))
 	}
 }
