@@ -100,7 +100,7 @@ var testServer: Server = {
 	}
 }()
 
-final class Inplace : RecordProtocol, TupleProtocol {
+final class Inplace : MutableRecord, TupleProtocol {
 	static let cluster = Cluster(shards: [Shard(masters: [testServer])])
 	static let namespace = 22
 
@@ -133,7 +133,7 @@ final class Inplace : RecordProtocol, TupleProtocol {
 	}
 }
 
-final class Include : RecordProtocol {
+final class Include : MutableRecord {
 	static let cluster = Cluster(shards: [Shard(masters: [testServer])])
 	static let namespace = 22
 
@@ -173,7 +173,7 @@ final class Include : RecordProtocol {
 	}
 }
 
-final class IncludeShards : RecordProtocol, Sharded {
+final class IncludeShards : MutableRecord, Sharded {
 	static let shardCount = 8
 	static let cluster = Cluster(shards: (1...shardCount).map { _ in Shard(masters: [testServer]) })
 	static let namespace = 22

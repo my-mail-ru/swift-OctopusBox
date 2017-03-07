@@ -17,7 +17,7 @@ reflection.
 import IProto
 import OctopusBox
 
-final class MyData : RecordProtocol {
+final class MyData : MutableRecord {
 	static let cluster = Cluster(shards: [Shard(masters: [Server(host: "127.0.0.1", port: 33700)])])
 	static let namespace = 42
 
@@ -51,10 +51,10 @@ final class MyData : RecordProtocol {
 }
 
 func test() throws {
-	var data = Include(id: 100500, name: "Василий")
+	var data = MyData(id: 100500, name: "Василий")
 	try data.insert()
 
-	data = try Include.select(id: 100500)
+	data = try MyData.select(id: 100500)
 
 	try data.update([data.tuple.field(&data.tuple.quad).set(10)])
 

@@ -1,7 +1,7 @@
 import BinaryEncoding
 import IProto
 
-public extension RecordProtocol {
+public extension MutableRecord {
 	mutating func updateRequest(_ ops: [UpdateOperation<Tuple>], wantResult: Bool = false) -> Message {
 		var flags: UInt32 = 0
 		if wantResult {
@@ -30,7 +30,7 @@ public extension RecordProtocol {
 	}
 }
 
-public protocol QueueableUpdateRecord : RecordProtocol {
+public protocol QueueableUpdateRecord : MutableRecord {
 	var updateQueue: [UpdateOperation<Tuple>] { get set }
 }
 

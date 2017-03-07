@@ -2,7 +2,7 @@ import IProto
 import Octopus
 import BinaryEncoding
 
-public protocol RecordProtocol {
+public protocol Record {
 	associatedtype Tuple : TupleProtocol
 	associatedtype PrimaryKey
 	static var namespace: Int { get }
@@ -13,7 +13,12 @@ public protocol RecordProtocol {
 	init(tuple: Tuple, storageInfo: StorageInfo)
 }
 
-public extension RecordProtocol where Tuple == Self {
+public protocol MutableRecord : Record {}
+
+@available(*, deprecated, message: "Use 'Record' or 'MutableRecord' instead")
+public typealias RecordProtocol = MutableRecord
+
+public extension Record where Tuple == Self {
 	var tuple: Tuple {
 		get { return self }
 	}
@@ -24,7 +29,7 @@ public extension RecordProtocol where Tuple == Self {
 	}
 }
 
-public extension RecordProtocol {
+public extension Record {
 	static func selectRequest<Key>(shard: Int = 0, index: Index<Tuple, Key>, keys: [Key], offset: UInt32 = 0, limit: UInt32 = UInt32.max) throws -> Message {
 		let headerSize = 5 * MemoryLayout<UInt32>.size
 		let approximateKeysSize = keys.count * (MemoryLayout<UInt32>.size + 1 + MemoryLayout<Key>.size)
@@ -94,7 +99,7 @@ public extension RecordProtocol {
 	}
 }
 
-public extension RecordProtocol {
+public extension MutableRecord {
 	func insertRequest(shard: Int = 0, action: InsertAction = .set, wantResult: Bool = false) -> Message {
 		var flags: UInt32 = action.rawValue
 		if wantResult {
@@ -127,7 +132,7 @@ public extension RecordProtocol {
 	}
 }
 
-public extension RecordProtocol {
+public extension MutableRecord {
 	static func deleteRequest(shard: Int = 0, key: PrimaryKey, wantResult: Bool = false) -> Message {
 		var flags: UInt32 = 0
 		if wantResult {
@@ -157,7 +162,7 @@ public extension RecordProtocol {
 	}
 }
 
-public extension RecordProtocol {
+public extension Record {
 	static func processResponse(of message: Message, wantResult: Bool = true) throws -> [Self] {
 		switch message.response {
 			case .ok(let response):
