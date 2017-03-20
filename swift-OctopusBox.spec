@@ -9,8 +9,8 @@ URL:           https://github.com/my-mail-ru/%{name}
 Source0:       https://github.com/my-mail-ru/%{name}/archive/%{version}.tar.gz#/%{name}-%{version}.tar.gz
 BuildRoot:     %(mktemp -ud %{_tmppath}/%{name}-%{version}-%{release}-XXXXXX)
 
-BuildRequires: swift
-BuildRequires: swift-packaging
+BuildRequires: swift >= 3.0.2
+BuildRequires: swift-packaging >= 0.6
 BuildRequires: swiftpm(https://github.com/my-mail-ru/swift-BinaryEncoding.git) >= 0.2.0
 BuildRequires: swiftpm(https://github.com/my-mail-ru/swift-IProto.git)
 BuildRequires: swiftpm(https://github.com/my-mail-ru/swift-Octopus.git)
@@ -46,5 +46,20 @@ rm -rf %{buildroot}
 %files
 %defattr(-,root,root,-)
 %{swift_libdir}/*.so
+
+
+%package devel
+Summary:  Client for Octopus/box in-memory key/value storage
+Requires: %{name} = %{version}-%{release}
+
+%description devel
+This package contains client for Octopus/box in-memory key/value storage.
+The client implements active record pattern and supports automagical encoding/decoding of tuples into structs using reflection.
+
+%{?__revision:Built from revision %{__revision}.}
+
+
+%files devel
+%defattr(-,root,root,-)
 %{swift_moduledir}/*.swiftmodule
 %{swift_moduledir}/*.swiftdoc
