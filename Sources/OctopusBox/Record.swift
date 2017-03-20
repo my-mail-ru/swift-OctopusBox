@@ -166,7 +166,7 @@ public extension Record {
 	static func processResponse(of message: Message, wantResult: Bool = true) throws -> [Self] {
 		switch message.response {
 			case .ok(let response):
-				return try response.withUnsafeBufferRawPointer {
+				return try response.withUnsafeBytes {
 					guard $0.count > 0 else {
 						throw OctopusBoxError.errcodeOmitted
 					}

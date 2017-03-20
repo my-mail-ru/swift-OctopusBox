@@ -132,14 +132,14 @@ extension BinaryEncodedData {
 
 public struct UnsafeTuple {
 	let cardinality: UInt32
-	let data: UnsafeBufferRawPointer
+	let data: UnsafeRawBufferPointer
 
 	func reader() -> Reader {
 		return Reader(reader: data.reader(), remains: cardinality)
 	}
 
 	struct Reader {
-		var reader: UnsafeBufferRawPointer.Reader
+		var reader: UnsafeRawBufferPointer.Reader
 		var remains: UInt32
 
 		mutating func read(_ type: Field.Type) throws -> Field? {
@@ -150,11 +150,11 @@ public struct UnsafeTuple {
 	}
 }
 
-extension UnsafeBufferRawPointer.Reader {
+extension UnsafeRawBufferPointer.Reader {
 	mutating func read(_: UnsafeTuple.Type) throws -> UnsafeTuple {
 		let size = Int(try read(UInt32.self))
 		let cardinality = try read(UInt32.self)
-		let buffer = try read(UnsafeBufferRawPointer.self, withSize: size)
+		let buffer = try read(UnsafeRawBufferPointer.self, withSize: size)
 		return UnsafeTuple(cardinality: cardinality, data: buffer)
 	}
 }

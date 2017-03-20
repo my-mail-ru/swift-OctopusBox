@@ -1,7 +1,7 @@
 import BinaryEncoding
 
 public protocol Field {
-	init(readAsFieldFrom: inout UnsafeBufferRawPointer.Reader) throws
+	init(readAsFieldFrom: inout UnsafeRawBufferPointer.Reader) throws
 	func appendAsField(to: inout BinaryEncodedData)
 }
 
@@ -11,7 +11,7 @@ extension BinaryEncodedData {
 	}
 }
 
-extension UnsafeBufferRawPointer.Reader {
+extension UnsafeRawBufferPointer.Reader {
 	mutating func read(field type: Field.Type) throws -> Field {
 		return try type.init(readAsFieldFrom: &self)
 	}
@@ -29,7 +29,7 @@ extension UInt32 : NativeField {}
 extension UInt64 : NativeField {}
 
 extension NativeField {
-	public init(readAsFieldFrom reader: inout UnsafeBufferRawPointer.Reader) throws {
+	public init(readAsFieldFrom reader: inout UnsafeRawBufferPointer.Reader) throws {
 		let size = Int(try reader.read(VarUInt.self))
 		guard size == MemoryLayout<Self>.size else { throw OctopusBoxError.invalidFieldSize }
 		self = try reader.read(Self.self)
@@ -42,7 +42,7 @@ extension NativeField {
 }
 
 extension BinaryEncodedData : Field {
-	public init(readAsFieldFrom reader: inout UnsafeBufferRawPointer.Reader) throws {
+	public init(readAsFieldFrom reader: inout UnsafeRawBufferPointer.Reader) throws {
 		self = try reader.read(BinaryEncodedData.self, withSizeOf: VarUInt.self)
 	}
 
@@ -52,7 +52,7 @@ extension BinaryEncodedData : Field {
 }
 
 extension String : Field {
-	public init(readAsFieldFrom reader: inout UnsafeBufferRawPointer.Reader) throws {
+	public init(readAsFieldFrom reader: inout UnsafeRawBufferPointer.Reader) throws {
 		self = try reader.read(String.self, withSizeOf: VarUInt.self)
 	}
 
