@@ -29,10 +29,10 @@ extension TupleProtocol {
 		}
 	}
 
-	public mutating func field<T : Field>(_ field: UnsafePointer<T>) -> FieldNumber<T, Self> {
+	public mutating func field<T : Field>(_ field: inout T) -> FieldNumber<T, Self> {
 		defer { _fixLifetime(self) }
 		let start = propertiesUnsafeRawPointer
-		let field = UnsafeRawPointer(field)
+		let field = UnsafeRawPointer(UnsafeMutablePointer(&field))
 		var i = 0
 		for info in Self.propertiesInfo {
 			if (start + info.offset) == field {
