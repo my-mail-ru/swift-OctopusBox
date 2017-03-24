@@ -45,23 +45,30 @@ extension TupleProtocol {
 		} else {
 			var list: [PropertyInfo] = []
 			var offset = 0
-			let mirror = Mirror(reflecting: self.init())
-			for (label, value) in mirror.children {
-				switch value {
-					case let val as Field:
-						let t = type(of: val)
-						t.align(offset: &offset)
-						list.append(PropertyInfo(type: t, offset: offset))
-						t.skip(offset: &offset)
-					default:
-						switch label {
-							case .some("storageInfo") where type(of: value) == Optional<StorageInfo>.self:
-								skip(Optional<StorageInfo>.self, offset: &offset)
-							case .some("updateQueue") where type(of: value) == Array<UpdateOperation<Self>>.self:
-								skip(Array<UpdateOperation<Self>>.self, offset: &offset)
-							default:
-								preconditionFailure("\(type(of: value)) is not Field")
-						}
+			var mirror = Mirror(reflecting: self.init())
+			var mirrors = [mirror]
+			while let m = mirror.superclassMirror {
+				mirror = m
+				mirrors.append(mirror)
+			}
+			for mirror in mirrors.reversed() {
+				for (label, value) in mirror.children {
+					switch value {
+						case let val as Field:
+							let t = type(of: val)
+							t.align(offset: &offset)
+							list.append(PropertyInfo(type: t, offset: offset))
+							t.skip(offset: &offset)
+						default:
+							switch label {
+								case .some("storageInfo") where type(of: value) == Optional<StorageInfo>.self:
+									skip(Optional<StorageInfo>.self, offset: &offset)
+								case .some("updateQueue") where type(of: value) == Array<UpdateOperation<Self>>.self:
+									skip(Array<UpdateOperation<Self>>.self, offset: &offset)
+								default:
+									preconditionFailure("\(type(of: value)) is not Field")
+							}
+					}
 				}
 			}
 			propertiesOfTuple[selfId] = list
