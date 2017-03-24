@@ -22,6 +22,7 @@ class OctopusBoxTests : XCTestCase {
 		XCTAssertEqual(exists?.name, "Василий")
 
 		try data.update([data.field(&data.checkUp).set(10)])
+		XCTAssertEqual(data.checkUp, 10)
 
 		let check = try Inplace.select(id: 1999999996)
 		XCTAssertEqual(check?.checkUp, 10)
@@ -41,6 +42,7 @@ class OctopusBoxTests : XCTestCase {
 		XCTAssertEqual(exists?.tuple.name, "Василий")
 
 		try data.update([data.tuple.field(&data.tuple.checkUp).set(10)])
+		XCTAssertEqual(data.tuple.checkUp, 10)
 
 		let check = try Include.select(id: 1999999996)
 		XCTAssertEqual(check?.tuple.checkUp, 10)
@@ -60,6 +62,7 @@ class OctopusBoxTests : XCTestCase {
 		XCTAssertEqual(exists?.tuple.name, "Василий")
 
 		try data.update([data.tuple.field(&data.tuple.checkUp).set(10)])
+		XCTAssertEqual(data.tuple.checkUp, 10)
 
 		let check = try IncludeShards.select(shard: 3, id: 1999999996)
 		XCTAssertEqual(check?.tuple.checkUp, 10)
@@ -80,6 +83,7 @@ class OctopusBoxTests : XCTestCase {
 
 		data.updateQueue = [data.field(&data.checkUp).set(10)]
 		try data.update()
+		XCTAssertEqual(data.checkUp, 10)
 
 		let check = try Inplace.select(id: 1999999996)
 		XCTAssertEqual(check?.checkUp, 10)

@@ -13,7 +13,9 @@ public protocol Record {
 	init(tuple: Tuple, storageInfo: StorageInfo)
 }
 
-public protocol MutableRecord : Record {}
+public protocol MutableRecord : Record {
+	var tuple: Tuple { get set }
+}
 
 @available(*, deprecated, message: "Use 'Record' or 'MutableRecord' instead")
 public typealias RecordProtocol = MutableRecord
@@ -26,6 +28,13 @@ public extension Record where Tuple == Self {
 	init(tuple: Tuple, storageInfo: StorageInfo) {
 		self = tuple
 		self.storageInfo = storageInfo
+	}
+}
+
+public extension MutableRecord where Tuple == Self {
+	var tuple: Tuple {
+		get { return self }
+		set { }
 	}
 }
 
@@ -120,15 +129,18 @@ public extension MutableRecord {
 		return message
 	}
 
-	mutating func insert(shard: Int = 0, action: InsertAction = .set, options: OverridenOptions? = nil) throws {
-		let message = insertRequest(shard: shard, action: action, wantResult: true)
+	mutating func insert(shard: Int = 0, action: InsertAction = .set, wantResult: Bool = false, options: OverridenOptions? = nil) throws {
+		let message = insertRequest(shard: shard, action: action, wantResult: wantResult)
 		options?.apply(to: message.options)
 		exchange(message: message)
-		let result = try Self.processResponse(of: message, wantResult: true)
-		guard result.count == 1 else {
-			throw OctopusBoxError.notSingleTuple(result.count)
+		if wantResult {
+			try processResponse(of: message, wantResult: true)
+		} else {
+			_ = try Self.processResponse(of: message) { _, _, storageInfo in
+				self.storageInfo = storageInfo
+				return []
+			}
 		}
-		self = result[0]
 	}
 }
 
@@ -153,17 +165,17 @@ public extension MutableRecord {
 		return Self.deleteRequest(shard: storageInfo?.shard ?? 0, key: Self.primaryKey.extractKey(tuple), wantResult: wantResult)
 	}
 
-	mutating func delete(options: OverridenOptions? = nil) throws {
-		let message = deleteRequest()
+	mutating func delete(wantResult: Bool = false, options: OverridenOptions? = nil) throws {
+		let message = deleteRequest(wantResult: wantResult)
 		options?.apply(to: message.options)
 		exchange(message: message)
-		_ = try Self.processResponse(of: message, wantResult: false)
+		try processResponse(of: message, wantResult: wantResult)
 		storageInfo = nil
 	}
 }
 
 public extension Record {
-	static func processResponse(of message: Message, wantResult: Bool = true) throws -> [Self] {
+	fileprivate static func processResponse(of message: Message, wantResult: (inout UnsafeRawBufferPointer.Reader, Int32, StorageInfo) throws -> [Self]) throws -> [Self] {
 		switch message.response {
 			case .ok(let response):
 				return try response.withUnsafeBytes {
@@ -176,21 +188,24 @@ public extension Record {
 						let message = try reader.read(String.self, withSize: reader.count)
 						throw OctopusError(rawValue: errcode, description: message)
 					}
-					let storageInfo = StorageInfo(from: response.from, shard: message.options.shard)
-					var result = [Self]()
-					if wantResult {
-						let count = Int(try reader.read(UInt32.self))
-						result.reserveCapacity(count)
-						for _ in (0..<count) {
-							let tuple = try reader.read(UnsafeTuple.self)
-							result.append(try Self(tuple: Tuple(fromUnsafe: tuple), storageInfo: storageInfo))
-							if message.code == MessageType.insert.rawValue { break } // For insert count of touched tuples returned instead of cardinality
-						}
-					}
-					return result
+					return try wantResult(&reader, message.code, StorageInfo(from: response.from, shard: message.options.shard))
 				}
 			case .error(let error): throw error
 		}
+	}
+
+	static func processResponse(of message: Message, wantResult: Bool = true) throws -> [Self] {
+		return try processResponse(of: message, wantResult: wantResult ? { reader, code, storageInfo in
+			let count = Int(try reader.read(UInt32.self))
+			var result = [Self]()
+			result.reserveCapacity(count)
+			for _ in (0..<count) {
+				let tuple = try reader.read(UnsafeTuple.self)
+				result.append(try Self(tuple: Tuple(fromUnsafe: tuple), storageInfo: storageInfo))
+				if message.code == MessageType.insert.rawValue { break } // For insert count of touched tuples returned instead of cardinality
+			}
+			return result
+		} : { _, _, _ in [] })
 	}
 
 	static func processResponses(of messages: [Message], wantResult: Bool = true) throws -> [Self] {
@@ -208,5 +223,23 @@ public extension Record {
 			result[groupBy.extractKey(record.tuple)] = record
 		}
 		return result
+	}
+}
+
+public extension MutableRecord {
+	mutating func processResponse(of message: Message, wantResult: Bool = true) throws {
+		if wantResult {
+			_ = try Self.processResponse(of: message) { reader, code, storageInfo in
+				let count = Int(try reader.read(UInt32.self))
+				if count > 0 {
+					let tuple = try reader.read(UnsafeTuple.self)
+					try self.tuple.syncFields(fromUnsafe: tuple)
+					self.storageInfo = storageInfo
+				}
+				return [Self]()
+			}
+		} else {
+			_ = try Self.processResponse(of: message) { _, _, _ in [] }
+		}
 	}
 }

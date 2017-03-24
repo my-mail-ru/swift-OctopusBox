@@ -10,11 +10,16 @@ var propertiesOfTuple: [ObjectIdentifier : [PropertyInfo]] = [:]
 public protocol TupleProtocol {
 	init()
 	init(fromUnsafe tuple: UnsafeTuple) throws
+	mutating func syncFields(fromUnsafe tuple: UnsafeTuple) throws
 }
 
 extension TupleProtocol {
 	public init(fromUnsafe tuple: UnsafeTuple) throws {
 		self.init()
+		try syncFields(fromUnsafe: tuple)
+	}
+
+	public mutating func syncFields(fromUnsafe tuple: UnsafeTuple) throws {
 		defer { _fixLifetime(self) }
 		var reader = tuple.reader()
 		let start = propertiesUnsafeMutableRawPointer

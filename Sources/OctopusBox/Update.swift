@@ -22,11 +22,11 @@ public extension MutableRecord {
 		return message
 	}
 
-	mutating func update(_ ops: [UpdateOperation<Tuple>], options: OverridenOptions? = nil) throws {
-		let message = updateRequest(ops)
+	mutating func update(_ ops: [UpdateOperation<Tuple>], wantResult: Bool = true, options: OverridenOptions? = nil) throws {
+		let message = updateRequest(ops, wantResult: wantResult)
 		options?.apply(to: message.options)
 		exchange(message: message)
-		_ = try Self.processResponse(of: message, wantResult: false)
+		try processResponse(of: message, wantResult: wantResult)
 	}
 }
 
@@ -40,11 +40,11 @@ public extension QueueableUpdateRecord {
 		return updateRequest(updateQueue, wantResult: wantResult)
 	}
 
-	mutating func update(options: OverridenOptions? = nil) throws {
-		let message = updateRequest()
+	mutating func update(wantResult: Bool = true, options: OverridenOptions? = nil) throws {
+		let message = updateRequest(wantResult: wantResult)
 		options?.apply(to: message.options)
 		exchange(message: message)
-		_ = try Self.processResponse(of: message, wantResult: false)
+		try processResponse(of: message, wantResult: wantResult)
 	}
 }
 
