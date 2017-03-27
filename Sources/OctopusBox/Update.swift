@@ -23,6 +23,7 @@ public extension MutableRecord {
 	}
 
 	mutating func update(_ ops: [UpdateOperation<Tuple>], wantResult: Bool = true, options: OverridenOptions? = nil) throws {
+		guard !ops.isEmpty else { return }
 		let message = updateRequest(ops, wantResult: wantResult)
 		options?.apply(to: message.options)
 		exchange(message: message)
@@ -41,10 +42,9 @@ public extension QueueableUpdateRecord {
 	}
 
 	mutating func update(wantResult: Bool = true, options: OverridenOptions? = nil) throws {
-		let message = updateRequest(wantResult: wantResult)
-		options?.apply(to: message.options)
-		exchange(message: message)
-		try processResponse(of: message, wantResult: wantResult)
+		guard !updateQueue.isEmpty else { return }
+		defer { updateQueue = [] }
+		try update(updateQueue, wantResult: wantResult, options: options)
 	}
 }
 

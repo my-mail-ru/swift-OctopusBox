@@ -57,6 +57,7 @@ public extension Record {
 	}
 
 	static func select<Key>(shard: Int = 0, index: Index<Tuple, Key>, keys: [Key], offset: UInt32 = 0, limit: UInt32 = UInt32.max, options: OverridenOptions? = nil) throws -> [Self] {
+		guard !keys.isEmpty else { return [] }
 		let message = try selectRequest(shard: shard, index: index, keys: keys, offset: offset, limit: limit)
 		options?.apply(to: message.options)
 		exchange(message: message)
@@ -92,6 +93,7 @@ public extension Record {
 	}
 
 	static func select<Key>(index: Index<Tuple, Key>, keys: [(shard: Int, key: Key)], options: OverridenOptions? = nil) throws -> [Self] {
+		guard !keys.isEmpty else { return [] }
 		let messages = try selectRequests(index: index, keys: keys)
 		if let options = options {
 			for message in messages {
