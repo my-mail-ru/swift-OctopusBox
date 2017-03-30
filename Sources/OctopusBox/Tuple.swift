@@ -1,6 +1,7 @@
 import BinaryEncoding
 
 struct PropertyInfo {
+	let name: String
 	let type: Field.Type
 	let offset: Int
 }
@@ -23,9 +24,13 @@ extension TupleProtocol {
 		defer { _fixLifetime(self) }
 		var reader = tuple.reader()
 		let start = propertiesUnsafeMutableRawPointer
-		for info in Self.propertiesInfo {
-			guard let field = try reader.read(info.type) else { break }
-			field.write(to: start, at: info.offset)
+		for (i, info) in Self.propertiesInfo.enumerated() {
+			do {
+				guard let field = try reader.read(info.type) else { break }
+				field.write(to: start, at: info.offset)
+			} catch {
+				throw OctopusBoxError.invalidTuple(tuple: BinaryEncodedData(tuple.data), field: (no: i, name: info.name), error: error)
+			}
 		}
 	}
 
@@ -62,7 +67,7 @@ extension TupleProtocol {
 						case let val as Field:
 							let t = type(of: val)
 							t.align(offset: &offset)
-							list.append(PropertyInfo(type: t, offset: offset))
+							list.append(PropertyInfo(name: label!, type: t, offset: offset))
 							t.skip(offset: &offset)
 						default:
 							switch label {

@@ -70,7 +70,7 @@ public extension Record {
 			if result.count == 0 {
 				return nil
 			}
-			throw OctopusBoxError.notSingleTuple(result.count)
+			throw OctopusBoxError.notSingleTuple(count: result.count)
 		}
 		return result[0]
 	}
@@ -182,7 +182,7 @@ public extension Record {
 			case .ok(let response):
 				return try response.withUnsafeBytes {
 					guard $0.count > 0 else {
-						throw OctopusBoxError.errcodeOmitted
+						throw OctopusBoxError.errcodeOmitted(message: message)
 					}
 					var reader = $0.reader()
 					let errcode = try reader.read(UInt32.self)

@@ -1,4 +1,5 @@
 import IProto
+import BinaryEncoding
 
 enum MessageType : Int32 {
 	case insert = 13
@@ -26,7 +27,8 @@ public struct StorageInfo {
 }
 
 public enum OctopusBoxError : Error {
-	case errcodeOmitted
-	case invalidFieldSize
-	case notSingleTuple(Int)
+	case errcodeOmitted(message: Message)
+	case invalidFieldSize(is: Int, must: Int)
+	case notSingleTuple(count: Int)
+	case invalidTuple(tuple: BinaryEncodedData, field: (no: Int, name: String), error: Error)
 }

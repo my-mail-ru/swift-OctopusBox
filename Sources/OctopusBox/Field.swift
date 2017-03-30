@@ -31,7 +31,7 @@ extension UInt64 : NativeField {}
 extension NativeField {
 	public init(readAsFieldFrom reader: inout UnsafeRawBufferPointer.Reader) throws {
 		let size = Int(try reader.read(VarUInt.self))
-		guard size == MemoryLayout<Self>.size else { throw OctopusBoxError.invalidFieldSize }
+		guard size == MemoryLayout<Self>.size else { throw OctopusBoxError.invalidFieldSize(is: size, must: MemoryLayout<Self>.size) }
 		self = try reader.read(Self.self)
 	}
 
