@@ -12,7 +12,7 @@ BuildRoot:     %(mktemp -ud %{_tmppath}/%{name}-%{version}-%{release}-XXXXXX)
 BuildRequires: swift >= 3.0.2
 BuildRequires: swift-packaging >= 0.6
 BuildRequires: swiftpm(https://github.com/my-mail-ru/swift-BinaryEncoding.git) >= 0.2.0
-BuildRequires: swiftpm(https://github.com/my-mail-ru/swift-IProto.git)
+BuildRequires: swiftpm(https://github.com/my-mail-ru/swift-IProto.git) >= 0.1.6
 BuildRequires: swiftpm(https://github.com/my-mail-ru/swift-Octopus.git)
 
 %swift_find_provides_and_requires

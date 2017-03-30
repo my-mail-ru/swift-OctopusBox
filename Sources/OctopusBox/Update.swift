@@ -15,7 +15,7 @@ public extension MutableRecord {
 		for op in ops {
 			data.append(op)
 		}
-		let message = Message(cluster: Self.cluster, code: MessageType.update.rawValue, data: data)
+		let message = Message(cluster: Self.cluster, type: MessageType.update, data: data)
 		if self is Sharded {
 			message.options.shard = storageInfo!.shard
 		}

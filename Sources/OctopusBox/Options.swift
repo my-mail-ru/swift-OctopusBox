@@ -1,4 +1,6 @@
+import BinaryEncoding
 import IProto
+import var CIProto.TEMPORARY_ERR_CODE_FLAG
 
 public struct OverridenOptions {
 	public var from: Message.Options.From?
@@ -52,6 +54,36 @@ private extension Message.Options.Retry {
 			insert(member)
 		} else {
 			remove(member)
+		}
+	}
+}
+
+extension Message {
+	convenience init(cluster: Cluster, type: MessageType, data: BinaryEncodedData) {
+		self.init(cluster: cluster, code: type.rawValue, data: data)
+		options.from = type == .select ? .masterThenReplica : .master
+		options.retry.toggle(.safe, type == .update)
+		switch type {
+			case .select:
+				options.timeout = 0.2
+			case .execLua:
+				options.timeout = 0.5
+			default:
+				options.timeout = 23
+				options.softRetryDelay = (min: 0.5, max: 1.5)
+		}
+		options.softRetryCallback = { message in
+			switch message.response {
+				case .ok(let response):
+					return response.withUnsafeBytes {
+						guard $0.count > 0 else { return false }
+						var reader = $0.reader()
+						guard let errcode = try? reader.read(UInt32.self) else { return false }
+						return errcode & UInt32(bitPattern: TEMPORARY_ERR_CODE_FLAG) != 0
+					}
+				case .error:
+					return false
+			}
 		}
 	}
 }

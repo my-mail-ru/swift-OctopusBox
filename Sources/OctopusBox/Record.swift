@@ -51,7 +51,7 @@ public extension Record {
 		for key in keys {
 			data.append(key: key)
 		}
-		let message = Message(cluster: cluster, code: MessageType.select.rawValue, data: data)
+		let message = Message(cluster: cluster, type: MessageType.select, data: data)
 		message.options.shard = shard
 		return message
 	}
@@ -120,7 +120,7 @@ public extension MutableRecord {
 		data.append(UInt32(Self.namespace), as: UInt32.self)
 		data.append(flags, as: UInt32.self)
 		data.append(tuple: tuple)
-		let message = Message(cluster: Self.cluster, code: MessageType.insert.rawValue, data: data)
+		let message = Message(cluster: Self.cluster, type: MessageType.insert, data: data)
 		if self is Sharded {
 			if shard != 0 {
 				message.options.shard = shard
@@ -156,7 +156,7 @@ public extension MutableRecord {
 		data.append(UInt32(Self.namespace), as: UInt32.self)
 		data.append(flags, as: UInt32.self)
 		data.append(key: key)
-		let message = Message(cluster: Self.cluster, code: MessageType.delete.rawValue, data: data)
+		let message = Message(cluster: Self.cluster, type: MessageType.delete, data: data)
 		if self is Sharded.Type {
 			message.options.shard = shard
 		}
