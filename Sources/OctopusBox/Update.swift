@@ -68,11 +68,17 @@ public struct FieldNumber<Value : Field, Tuple : TupleProtocol> {
 	}
 }
 
-public extension FieldNumber where Value : Integer {
-	func add(_ value: Value) -> UpdateOperation<Tuple> {
+public extension FieldNumber where Value : EqualWidthInteger, Value.Signed : Field {
+	func add(_ value: Value.Signed) -> UpdateOperation<Tuple> {
 		return UpdateOperation(field: number, op: .add(value))
 	}
 
+	func sub(_ value: Value.Signed) -> UpdateOperation<Tuple> {
+		return UpdateOperation(field: number, op: .add(-value))
+	}
+}
+
+public extension FieldNumber where Value : Integer {
 	func and(_ value: Value) -> UpdateOperation<Tuple> {
 		return UpdateOperation(field: number, op: .and(value))
 	}
@@ -83,12 +89,6 @@ public extension FieldNumber where Value : Integer {
 
 	func or(_ value: Value) -> UpdateOperation<Tuple> {
 		return UpdateOperation(field: number, op: .or(value))
-	}
-}
-
-public extension FieldNumber where Value : SignedInteger {
-	func sub(_ value: Value) -> UpdateOperation<Tuple> {
-		return UpdateOperation(field: number, op: .add(-value))
 	}
 }
 
