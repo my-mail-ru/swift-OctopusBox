@@ -97,7 +97,7 @@ class OctopusBoxTests : XCTestCase {
 
 var testServer: Server = {
 	if let env = getenv("TEST_SERVER") {
-		let parts = String(cString: env).characters.split(separator: ":").map(String.init)
+		let parts = String(cString: env).split(separator: ":").map(String.init)
 		return Server(host: parts[0], port: Int(parts[1])!)
 	} else {
 		return Server(host: "127.0.0.1", port: 33700)

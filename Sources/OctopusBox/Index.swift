@@ -59,7 +59,7 @@ extension BinaryEncodedData {
 		}
 	}
 
-	mutating func append<T : TupleProtocol, K>(key: Index<T, K>, from tuple: T) {
+	mutating func append<T, K>(key: Index<T, K>, from tuple: T) {
 		append(key: key.extractKey(tuple))
 	}
 }

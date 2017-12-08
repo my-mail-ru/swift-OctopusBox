@@ -78,7 +78,7 @@ public extension FieldNumber where Value : EqualWidthInteger, Value.Signed : Fie
 	}
 }
 
-public extension FieldNumber where Value : Integer {
+public extension FieldNumber where Value : BinaryInteger {
 	func and(_ value: Value) -> UpdateOperation<Tuple> {
 		return UpdateOperation(field: number, op: .and(value))
 	}
@@ -92,7 +92,7 @@ public extension FieldNumber where Value : Integer {
 	}
 }
 
-public extension FieldNumber where Value : OptionSet, Value.RawValue : Field & Integer {
+public extension FieldNumber where Value : OptionSet, Value.RawValue : Field & BinaryInteger {
 	func setBit(_ value: Value) -> UpdateOperation<Tuple> {
 		return UpdateOperation(field: number, op: .or(value.rawValue))
 	}
@@ -132,7 +132,7 @@ public struct UpdateOperation<Tuple : TupleProtocol> {
 }
 
 extension BinaryEncodedData {
-	mutating func append<T : TupleProtocol>(_ op: UpdateOperation<T>) {
+	mutating func append<T>(_ op: UpdateOperation<T>) {
 		append(UInt32(op.field), as: UInt32.self)
 		append(op.op)
 	}
